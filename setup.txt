@@ -1,0 +1,3 @@
+### Copy and Paste this code to terminal
+
+npm install express fs log4js minecraft-data minecraft-protocol mineflayer mineflayer-blockfinder mineflayer-collectblock mineflayer-movement mineflayer-pathfinder prismarine-block prismarine-item prismarine-registry prismarine-viewer vec3
