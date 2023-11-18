@@ -5,7 +5,7 @@ This repository contains a Minecraft bot programmed in JavaScript using Mineflay
 ## Setup
 
 ### Prerequisites
-
+- Git intalled ([Download Git](https://git-scm.com/downloads))
 - Node.js installed ([Download Node.js](https://nodejs.org/))
 - Minecraft Java Edition installed
 
