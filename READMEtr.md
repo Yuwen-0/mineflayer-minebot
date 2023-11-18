@@ -23,7 +23,7 @@ Bu depo, oyun içinde madencilik görevlerini otomatikleştirmek için Mineflaye
     cd minecraft-mining-bot
     ```
 
-3. Bağımlılıkları yükleyin:
+3. Eklentileri yükleyin:
 
     ```bash
     npm install
@@ -42,8 +42,9 @@ Bu depo, oyun içinde madencilik görevlerini otomatikleştirmek için Mineflaye
     ```
 
 2. Minecraft'ta, sunucunun çalıştığından emin olun ve botu madencilik yapmak istediğiniz yere götürün.
+3. Bota elinizde ne kadar çok kazma ve meşale bırakabilirseniz o kadarını verin, bana kalırsa olarak 9 kazma ve 9 yığın meşale bir süre için yeterlidir, bot kazma bulunamadığında çöker
 
-3. Bot'u etkinleştirmek için Minecraft sohbetinde şu komutu kullanın:
+4. Bot'u etkinleştirmek için Minecraft sohbetinde şu komutu kullanın:
 
     ```
     startMining <başlangıçNoktası:x> <başlangıçNoktası:y> <başlangıçNoktası:z> <madenBloklarıSıra> <madenBloklarıSütun>

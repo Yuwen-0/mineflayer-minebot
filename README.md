@@ -42,8 +42,9 @@ This repository contains a Minecraft bot programmed in JavaScript using Mineflay
     ```
 
 2. In Minecraft, ensure the server is running and take bot to the place you want it to start mineing at.
+3. give the bot pickacke and torches as much as you can leave for coice 9 pick and 9 stack torch would be enough for some time bot crashes when there is no pick available
 
-3. To activate the bot, use the following command in the Minecraft chat:
+4. To activate the bot, use the following command in the Minecraft chat:
 
     ```
     startMining <startPoint:x> <startPoint:y> <startPoint:z> <mineBlocksRow> <mineBlocksColumn>
