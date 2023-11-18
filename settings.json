@@ -1,0 +1,11 @@
+{
+    "server": {
+        "port": ,
+        "ip": "",
+        "version": ""
+    },
+    "bot": {
+        "username": "MineBot",
+        "password": "",
+    },
+}
