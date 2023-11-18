@@ -39,6 +39,10 @@ function createBot() {
     logger.info("Bot joined to the server");
   });
 
+  bot.on("spawn", () => {
+    bot.chat('Usage: startMining <startPoint:x> <startPoint:y> <startPoint:z> <mineBlocksRow> <mineBlocksCoulmn>');
+  })
+
   bot.on('chat', (username, message) => {
     const tokens = message.split(' ');
     if (message === 'sa') {
@@ -65,14 +69,23 @@ function createBot() {
 
 async function mineOre(bot, row, column, startPoints) {
   const { x, y, z } = startPoints;
+  const goalBlock = await bot.blockAt(bot.entity.position.offset(1, -1, 0));
+  if(goalBlock.type === 0) {
+    await bot.equip(bot.inventory.items().find(item => item.name == "cobbled_deepslate"), 'hand');
+    try {
+      await bot.placeBlock(goalBlock, new Vec3(1, -1, 0));
+    } catch(err) {
+      console.log(err);
+    }
+  }
   
   if (isInventoryFull(bot)) {
-    await bot.pathfinder.goto(new GoalBlock(x, y, z));
+    await bot.pathfinder.goto(new GoalBlock(x,y,z));
     await dropItems(bot);
   }
 
   const oreTypes = [
-    mcData.blocksByName.deepslate_redstone_ore.id,
+    mcData.blocksByName.deepslate_redstone_ore.id,  
     mcData.blocksByName.deepslate_lapis_ore.id,
     mcData.blocksByName.deepslate_diamond_ore.id,
     mcData.blocksByName.deepslate_emerald_ore.id,
@@ -82,7 +95,7 @@ async function mineOre(bot, row, column, startPoints) {
   const blocks = oreTypes.reduce((result, oreType) => {
     const oreBlocks = bot.findBlocks({
       matching: oreType,
-      maxDistance: 2.2,
+      maxDistance: 2,
       count: 20,
       maxEntities: 10,
       algorithm: 'manhattan',
@@ -90,23 +103,7 @@ async function mineOre(bot, row, column, startPoints) {
     });
     return result.concat(oreBlocks);
   }, []);
-
-  if (blocks.length !== 0) {
-    for (const block of blocks) {
-      const blockBelow = bot.blockAt(new Vec3(block.x, block.y - 1, block.z));
-      const blockAbove = bot.blockAt(new Vec3(block.x, block.y + 1, block.z));
-      const blockToDig = bot.blockAt(block);
-
-      if (blockBelow && blockBelow.type === 0 && blockBelow.name === "bedrock" || blockAbove.name === 'bedrock') {
-        await bot.dig(blockToDig);
-      } else {
-        await bot.pathfinder.goto(new GoalBlock(block.x, block.y, block.z));
-      }
-    }
-    await mineOre(bot, row, column,startPoints);
-  } else {
-    const goalBlock = bot.blockAt(new Vec3(x + row, y - 1, z + column));
-    if (!goalBlock) {
+    if (goalBlock.type === 0) {
       await bot.equip(bot.inventory.items().find(item => item.name == "cobbled_deepslate"), 'hand');
       await bot.pathfinder.goto(new GoalBlock(x + row - 1, y, z + column));
       try {
@@ -115,42 +112,104 @@ async function mineOre(bot, row, column, startPoints) {
         console.log(err);
       }
     }
+    try {
+    await bot.pathfinder.goto(new GoalBlock(x + row-1, y, z + column));
     await bot.pathfinder.goto(new GoalBlock(x + row, y, z + column));
-  }
-}
+    } catch (err) {
+      console.log(err);
+    }
+  if (blocks.length !== 0) {
+    for (const block of blocks) {
+      if(await isThereObsticle(bot)) {
+        column += 3;
+        row = 0;
+      } 
+      const harvestTool = bot.inventory.items().find(item => item.name.includes('pickaxe'));
+      const blockBelow = bot.blockAt(new Vec3(block.x, block.y - 1, block.z));
+      const blockAbove = bot.blockAt(new Vec3(block.x, block.y + 1, block.z));
+      const blockToDig = bot.blockAt(block);
+      await bot.equip(harvestTool, 'hand');
+      if (blockBelow && blockBelow.type === 0 || blockBelow.name === "bedrock"||blockBelow.type === 0 || blockAbove.type === 0 || blockAbove.name === 'bedrock') {
+        await bot.dig(blockToDig);
+      } else {
+        await bot.dig(blockToDig);
+        try{
+          await bot.pathfinder.goto(new GoalBlock(block.x, block.y, block.z));    
+        }catch(err){
+          console.log(err);
 
-    async function startMining(bot, startPoints, mineBlocksRow, mineBlocksCoulmn) {
-      const { x, y, z } = startPoints;
-  
-      await bot.pathfinder.goto(new GoalBlock(x, y, z));
-
-      for (let column = 0; column <= mineBlocksCoulmn * 3; column += 3) {
-        await bot.pathfinder.goto(new GoalBlock(x, y, z + column));
-        for (let row = 0; row <= mineBlocksRow; row++) {
-          const thereIsLava = isThereLava(bot);
-          if(!thereIsLava) {
-            column +=3;
-            row += 0;
-          }
-          if (row % 10 === 0) {
-            await placeTorch(bot);
-          }
-          await mineOre(bot, row, column,startPoints);
         }
+        await sleep(500);
       }
+    }
 
-      bot.chat('Mining Done!');
+    await mineOre(bot, row, column,startPoints);
   }
 }
 
-async function isThereLava(bot) {
-  const blocksLava = bot.findBlocks({
+async function startMining(bot, startPoints, mineBlocksRow, mineBlocksCoulmn) {
+  const { x, y, z } = startPoints;
+  await bot.pathfinder.goto(new GoalBlock(x, y, z));
+  for (let column = 0; column <= mineBlocksCoulmn * 3; column += 3) {
+    const goalBlock = await bot.blockAt(bot.entity.position.offset(1, -1, 0));
+    if(goalBlock.type === 0) {
+      await bot.equip(bot.inventory.items().find(item => item.name == "cobbled_deepslate"), 'hand');
+      try {
+        await bot.placeBlock(goalBlock, new Vec3(1, -1, 0));
+      } catch(err) {
+        console.log(err);
+      }
+    }
+    try {
+      await bot.pathfinder.goto(new GoalBlock(x, y, z + column));
+    } catch (err) {
+      console.log(err);
+    }
+    for (let row = 0; row <= mineBlocksRow; row++) {
+      if (await isThereObsticle(bot)) {
+        break;
+      }
+      if (row % 10 === 0) {
+        await placeTorch(bot);
+      }
+      logger.info(`Mining at ${x + row}, ${y}, ${z + column}`);
+      await mineOre(bot, row, column, startPoints);
+    }
+  }
+
+  bot.chat('Mining Done!');
+}
+}
+
+async function sleep(ms){
+  return new Promise(resolve => setTimeout(resolve, ms)); 
+}
+
+
+async function isThereObsticle(bot) {
+  const blocksLava = await bot.findBlocks({
     matching: mcData.blocksByName.lava.id,
-    maxDistance: 2, // Set an appropriate value for the maximum distance to search
+    maxDistance: 5, // Set an appropriate value for the maximum distance to search
     maxEntities: 10, // Limit the search to only blocks (ignore entities)
     point: bot.entity.position // Set the point from which to start searching (bot's position)
   });
-  return blocksLava.length > 0;
+
+  const blocksWater = await bot.findBlocks({
+    matching: mcData.blocksByName.water.id,
+    maxDistance: 2, // Set an appropriate value for the maximum distance to search
+    maxEntities: 10, // Limit the search to only blocks (ignore entities)
+    point: bot.entity.position // Set the point from which to start searching (bot's position)
+  })
+
+  const blocksGravel = await bot.findBlocks({
+    matching: mcData.blocksByName.gravel.id,
+    maxDistance: 2.2, // Set an appropriate value for the maximum distance to search
+    maxEntities: 10, // Limit the search to only blocks (ignore entities)
+    point: bot.entity.position.offset(0, 1, 0) // Set the point from which to start searching (bot's position)
+  });
+
+  const allBlocks = [...blocksLava, ...blocksWater, ...blocksGravel];
+  return allBlocks.length > 0;
 }
 
 function isInventoryFull(bot) {
@@ -162,67 +221,73 @@ function isInventoryFull(bot) {
 }
 
 async function isChestFull(bot,chest){
-  const chestBlock = bot.blockAt(chest);
-  const currentChest = await bot.openChest(chestBlock);
+  const currentChest = await bot.openChest(bot.blockAt(chest));
   const chestInventory = currentChest.containerItems();
   const occupiedSlots = chestInventory.filter(item => item !== null).length;
   const maxSlots = chestInventory.length;
   await currentChest.close();
-  return occupiedSlots === maxSlots;
+  console.log(occupiedSlots,maxSlots);
+  return occupiedSlots !== maxSlots;
 }
 
 function isTool(item) {
-  return item.stackSize === 1;
+  return item.name.includes("pickaxe") || item.name === "torch" || item.name === "cooked_beef";
 }
 
-function itemByName (items, name) {
-  let item
-  let i
-  for (i = 0; i < items.length; ++i) {
-    item = items[i]
-    if (item && item.name === name) return item
-  }
-  return null
-}
-
-async function depositItem (name, amount,chest) {
-  const item = itemByName(chest.items(), name)
+async function depositItem(name, amount, chest) {
+  const item = getItemByName(chest.items(), name);
   if (item) {
     try {
-      await chest.deposit(item.type, null, amount)
-      console.log(item.type, amount);
-    } catch (err) {
-      logger.error(err);
+      await chest.deposit(item.type, null, amount);
+    } catch (error) {
+      logger.error(error);
     }
   }
+}
+
+async function withdrawItem(name, amount, chest) {
+  const item = getItemByName(chest.items(), name);
+  if (item) {
+    try {
+      await chest.withdraw(item.type, null, amount);
+    } catch (error) {
+      logger.error(error);
+    }
+  }
+}
+
+function getItemByName(items, name) {
+  return items.find(item => item.name === name);
 }
 
 
 async function dropItems(bot) {
-  const chests = bot.findBlocks({
+  const chests = await bot.findBlocks({
     matching: mcData.blocksByName.chest.id,
-    maxDistance: 5,
+    count: 10,
+    maxDistance: 20,
   });
 
   if (chests.length === 0) {
     bot.chat("I need a chest nearby to drop items!");
-    setTimeout(() => {
-      dropItems(bot);
-    }, 5000);
-  } else {
-    for (const chest of chests) {
-      if (!await isChestFull(bot,chest)) continue;
+    setTimeout(() => dropItems(bot), 5000);
+    return;
+  }
+  console.log(chests);
+  for (const chest of chests) {
+    if (await isChestFull(bot, chest)) continue;
 
-      const chestBlock = bot.blockAt(chest);
-      const currentChest = await bot.openChest(chestBlock);
-      const botInventory = bot.inventory.items();
+    const chestBlock = await bot.blockAt(chest);
+    const currentChest = await bot.openChest(chestBlock);
+    const botInventory = await bot.inventory.items();
 
-      for (const item of botInventory) {
-        if (item && !isTool(item)){
-           await depositItem(item.name, item.count, currentChest);
-        }
+    for (const item of botInventory) {
+      if (item && !await isTool(item)) {
+        console.log("Drop item: " + item.name);
+        await depositItem(item.name, item.count, currentChest);
       }
     }
+    withdrawItem("coobled_deepslate", 64, bot.inventory);
   }
 
   logger.info("Dropped items");
@@ -232,8 +297,13 @@ async function placeTorch(bot) {
   const torchItem = bot.inventory.items().find(item => item.name === 'torch'); // Adjust the name according to your Minecraft version
   if (torchItem) {
     const torchBlock = bot.blockAt(bot.entity.position.offset(0, -1, 0)); // Place the torch one block below the bot's current position
+    if(bot.blockAt(bot.entity.position.offset(0, 0, 0)).name == "torch") return;
     await bot.equip(torchItem, 'hand');
-    await bot.placeBlock(torchBlock, new Vec3(0, 1, 0)); // Place the torch above the block below the bot
+    try{
+      await bot.placeBlock(torchBlock, new Vec3(0, 1, 0)); // Place the torch above the block below the bot
+    }catch(err){
+      console.log(err);
+    }
   } else {
     console.log('No torches in inventory');
   }
